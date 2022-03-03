@@ -182,6 +182,7 @@ void aioFileDescriptor_signal_withHandle(HANDLE event){
 }
 
 EXPORT(void) aioInit(void){
+	logTrace("aioInit start");
 	interruptEvent = CreateEventW(NULL, TRUE, FALSE, L"InterruptEvent");
 	if(!interruptEvent){
 		char* msg = formatMessageFromErrorCode(GetLastError());
@@ -197,17 +198,20 @@ EXPORT(void) aioInit(void){
 		free(msg);
 		exit(1);
 	}
-
+	logTrace("aioInit done");
 }
 
 EXPORT(void) aioFini(void){
+	logTrace("aioFini start");
 	CloseHandle(interruptEvent);
 	CloseHandle(interruptMultiWait);
+	logTrace("aioFini done");
 }
 
 EXPORT(void) aioEnable(int fd, void *clientData, int flags){
 	AioFileDescriptor * aioFileDescriptor;
 
+	logTrace("aioEnable start");
 	aioFileDescriptor = aioFileDescriptor_find(fd);
 	if(!aioFileDescriptor){
 		aioFileDescriptor = aioFileDescriptor_new();
@@ -245,15 +249,18 @@ EXPORT(void) aioEnable(int fd, void *clientData, int flags){
 		logError("ioctlsocket(FIONBIO, 1): %s", msg);
 		free(msg);
 	}
+	logTrace("aioEnable done");
 }
 
 EXPORT(void) aioHandle(int fd, aioHandler handlerFn, int mask){
 	AioFileDescriptor * aioFileDescriptor;
 	char buf[100];
 
+	logTrace("aioHandle start");
 	aioFileDescriptor = aioFileDescriptor_find(fd);
 
 	if(!aioFileDescriptor){
+		logTrace("aioHandle no aioFileDescriptor");
 		return;
 	}
 
@@ -268,14 +275,17 @@ EXPORT(void) aioHandle(int fd, aioHandler handlerFn, int mask){
 		WSAEventSelect(aioFileDescriptor->fd, aioFileDescriptor->readEvent, FD_READ | FD_ACCEPT | FD_OOB | FD_CLOSE);
 		//This recv will always generates a WOULDBLOCK, but this is needed to generate the correct event in Windows.
 		recv(aioFileDescriptor->fd, (void*)buf, 100, MSG_PEEK);
+		logTrace("aioHandle AIO_R done");
 		return;
 	}
 
 	if(mask & AIO_W){
 		WSAEventSelect(aioFileDescriptor->fd, aioFileDescriptor->writeEvent, FD_WRITE);
+		logTrace("aioHandle AIO_W done");
 		return;
 	}
 
+	logTrace("aioHandle done");
 }
 
 EXPORT(void) aioSuspend(int fd, int mask){
@@ -286,13 +296,16 @@ EXPORT(void) aioSuspend(int fd, int mask){
 }
 
 EXPORT(void) aioDisable(int fd){
+	logTrace("aioDisable start");
 	aioFileDescriptor_remove(fd);
+	logTrace("aioDisable done");
 }
 
 EXPORT(void) aioEnableExternalHandler(int fd, HANDLE handle, void *clientData, aioHandler handlerFn, int mask){
 
 	AioFileDescriptor * aioFileDescriptor;
 
+	logTrace("aioEnableExternalHandler start");
 	aioFileDescriptor = aioFileDescriptor_find(fd);
 	if(!aioFileDescriptor){
 		aioFileDescriptor = aioFileDescriptor_new();
@@ -313,6 +326,7 @@ EXPORT(void) aioEnableExternalHandler(int fd, HANDLE handle, void *clientData, a
 
 	aioFileDescriptor->handlerFn = handlerFn;
 	aioFileDescriptor->mask = mask;
+	logTrace("aioEnableExternalHandler done");
 }
 
 /*
@@ -431,6 +445,7 @@ EXPORT(long) aioPoll(long microSeconds){
 	 * The remaining slot is used by the interruptEvent.
 	 */
 
+	logTrace("aioPoll start");
 	//We need an array with all the handles to process
 	long size = aioFileDescriptor_numberOfHandles();
 	allHandles = malloc(sizeof(HANDLE) *size);
@@ -453,6 +468,7 @@ EXPORT(long) aioPoll(long microSeconds){
 
 		checkEventsInHandles(allHandles, size);
 		free(allHandles);
+		logTrace("aioPoll MAXIMUM_WAIT_OBJECTS");
 		return 1;
 	}
 
@@ -485,6 +501,7 @@ EXPORT(long) aioPoll(long microSeconds){
 			free(waitingHandles);
 			free(allHandles);
 
+			logTrace("aioPoll waitingHandles[i] == NULL");
 			return 0;
 		}
 
@@ -509,6 +526,7 @@ EXPORT(long) aioPoll(long microSeconds){
 		free(waitingHandles);
 		free(allHandles);
 
+		logTrace("aioPoll WAIT_TIMEOUT");
 		return hasEvents;
 	}
 
@@ -525,6 +543,7 @@ EXPORT(long) aioPoll(long microSeconds){
 		free(waitingHandles);
 		free(allHandles);
 
+		logTrace("aioPoll WAIT_FAILED");
 		return 0;
 	}
 
@@ -543,10 +562,13 @@ EXPORT(long) aioPoll(long microSeconds){
 
 	free(waitingHandles);
 	free(allHandles);
+	logTrace("aioPoll done");
 	return hasEvents;
 }
 
 EXPORT(void) aioInterruptPoll(){
+	logTrace("aioInterruptPoll start");
 	SetEvent(interruptEvent);
+	logTrace("aioInterruptPoll done");
 }
 
