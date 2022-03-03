@@ -456,6 +456,7 @@ EXPORT(long) aioPoll(long microSeconds){
 	if(size % MAXIMUM_WAIT_OBJECTS){
 		numberOfThreads++;
 	}
+	logTrace("aioPoll: %d threads", numberOfThreads);
 
 	/*
 	* If the number of threads is bigger than the ones I can manage I will handle as the timeout has arrive.
@@ -567,8 +568,6 @@ EXPORT(long) aioPoll(long microSeconds){
 }
 
 EXPORT(void) aioInterruptPoll(){
-	logTrace("aioInterruptPoll start");
 	SetEvent(interruptEvent);
-	logTrace("aioInterruptPoll done");
 }
 
