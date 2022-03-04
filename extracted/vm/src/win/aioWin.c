@@ -412,6 +412,9 @@ static HANDLE sliceWaitForMultipleObjects(HANDLE* allHandles, int initialIndex, 
 	sliceData->handles = &(allHandles[initialIndex]);
 	sliceData->size = sizeToProcess;
 	sliceData->microSeconds = microSeconds;
+	for (int i=0; i<sizeToProcess) {
+		logTrace("sliceData->handles[%d]=%p", i, allHandles[initialIndex+i]);
+	}
 
 //	logTrace("Launching slice from %d size %d", initialIndex, sizeToProcess);
 
@@ -482,6 +485,7 @@ EXPORT(long) aioPoll(long microSeconds){
 	 * We pass the interrupt event as the first handler
 	 */
 	waitingHandles[0] = interruptEvent;
+	logTrace("interruptEvent: %p", interruptEvent);
 
 	int remainingSize = size;
 	int initialIndex = 0;
