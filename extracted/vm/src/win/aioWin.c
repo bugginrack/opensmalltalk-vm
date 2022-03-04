@@ -365,6 +365,7 @@ static int checkEventsInHandles(HANDLE* handlesToQuery, int size){
 	logTrace("checkEventsInHandles start");
 	for(int i=0; i < size; i++){
 		if(WaitForSingleObject(handlesToQuery[i], 0) == WAIT_OBJECT_0) {
+			logTrace("checkEventsInHandles signal handle %p", handlesToQuery[i]);
 			aioFileDescriptor_signal_withHandle(handlesToQuery[i]);
 			hasEvent = 1;
 		}
@@ -526,6 +527,14 @@ EXPORT(long) aioPoll(long microSeconds){
 	for(int i=1; i <= numberOfThreads; i++){
 		CloseHandle(waitingHandles[i]);
 	}
+
+
+	/* AKG TEST: If this is a WAIT_TIMEOUT force individual handles to be checked.
+	 * On the assumption that the WaitForMultipleObjectsEx is failing due to glutin making 
+	 * the same call.
+	 */
+	if (returnValue == WAIT_TIMEOUT)
+		returnValue = WAIT_OBJECT_0 + 1;
 
 
 	if(returnValue == WAIT_TIMEOUT){
