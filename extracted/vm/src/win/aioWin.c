@@ -137,6 +137,7 @@ void aioFileDescriptor_signal_withHandle(HANDLE event){
 
 	AioFileDescriptor* element = fileDescriptorList;
 
+	logTrace("signal_withHandle: %p", event);
 	while(element){
 
 		if(element->readEvent == event){
@@ -361,6 +362,7 @@ static int checkHandlesForPipes(HANDLE* handlesToQuery, long size){
 static int checkEventsInHandles(HANDLE* handlesToQuery, int size){
 	int hasEvent = 0;
 
+	logTrace("checkEventsInHandles start");
 	for(int i=0; i < size; i++){
 		if(WaitForSingleObject(handlesToQuery[i], 0) == WAIT_OBJECT_0) {
 			aioFileDescriptor_signal_withHandle(handlesToQuery[i]);
@@ -370,6 +372,7 @@ static int checkEventsInHandles(HANDLE* handlesToQuery, int size){
 
 	hasEvent |= checkHandlesForPipes(handlesToQuery, size);
 
+	logTrace("checkEventsInHandles done: %d", hasEvent);
 	return hasEvent;
 }
 
@@ -412,7 +415,7 @@ static HANDLE sliceWaitForMultipleObjects(HANDLE* allHandles, int initialIndex, 
 	sliceData->handles = &(allHandles[initialIndex]);
 	sliceData->size = sizeToProcess;
 	sliceData->microSeconds = microSeconds;
-	for (int i=0; i<sizeToProcess) {
+	for (int i=0; i<sizeToProcess; i++) {
 		logTrace("sliceData->handles[%d]=%p", i, allHandles[initialIndex+i]);
 	}
 
