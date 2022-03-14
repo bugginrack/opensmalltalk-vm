@@ -35,6 +35,7 @@
 #include "sqMemoryFence.h"
 #include "pharovm/semaphores/platformSemaphore.h"
 #include "pharovm/interpreter.h"
+#include "beacon.h"
 
 #if !defined(_WIN32)
 #include <signal.h>
@@ -166,6 +167,8 @@ signalSemaphoreWithIndex(sqInt index)
 	}
 
 	checkSignalRequests = 1;
+	logBeacon("SEMAPHORE", "signalSemaphoreWithIndex(%d): %d, %d", index, signalRequests[i].requests, signalRequests[i].responses);
+ 
 	forceInterruptCheck();
 
 	requestMutex->signal(requestMutex);
@@ -248,6 +251,7 @@ doSignalExternalSemaphores(sqInt externalSemaphoreTableSize)
 			if (doSignalSemaphoreWithIndex(i+1))
 				switched = 1;
 			++signalRequests[i].responses;
+			logBeacon("SEMAPHORE", "doSignalSemaphoreWithIndex(%d): %d, %d", i, signalRequests[i].requests, signalRequests[i].responses)
 			signalled = 1;
 		}
 

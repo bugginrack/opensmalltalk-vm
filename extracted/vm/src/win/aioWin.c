@@ -1,7 +1,7 @@
 #include "winsock2.h"
 #include "pharovm/pharo.h"
 #include "sqaio.h"
-
+#include "beacon.h"
 #include "windows.h"
 
 void heartbeat_poll_enter(long microSeconds);
@@ -137,7 +137,7 @@ void aioFileDescriptor_signal_withHandle(HANDLE event){
 
 	AioFileDescriptor* element = fileDescriptorList;
 
-	logTrace("signal_withHandle: %p", event);
+	logBeacon("SOCKET", "signal_withHandle: %p", event);
 	while(element){
 
 		if(element->readEvent == event){
@@ -183,7 +183,7 @@ void aioFileDescriptor_signal_withHandle(HANDLE event){
 }
 
 EXPORT(void) aioInit(void){
-	logTrace("aioInit start");
+	logBeacon("SOCKET", "aioInit start");
 	interruptEvent = CreateEventW(NULL, TRUE, FALSE, L"InterruptEvent");
 	if(!interruptEvent){
 		char* msg = formatMessageFromErrorCode(GetLastError());
@@ -199,20 +199,20 @@ EXPORT(void) aioInit(void){
 		free(msg);
 		exit(1);
 	}
-	logTrace("aioInit done");
+	logBeacon("SOCKET", "aioInit done");
 }
 
 EXPORT(void) aioFini(void){
-	logTrace("aioFini start");
+	logBeacon("SOCKET", "aioFini start");
 	CloseHandle(interruptEvent);
 	CloseHandle(interruptMultiWait);
-	logTrace("aioFini done");
+	logBeacon("SOCKET", "aioFini done");
 }
 
 EXPORT(void) aioEnable(int fd, void *clientData, int flags){
 	AioFileDescriptor * aioFileDescriptor;
 
-	logTrace("aioEnable start");
+	logBeacon("SOCKET", "aioEnable start");
 	aioFileDescriptor = aioFileDescriptor_find(fd);
 	if(!aioFileDescriptor){
 		aioFileDescriptor = aioFileDescriptor_new();
@@ -250,18 +250,18 @@ EXPORT(void) aioEnable(int fd, void *clientData, int flags){
 		logError("ioctlsocket(FIONBIO, 1): %s", msg);
 		free(msg);
 	}
-	logTrace("aioEnable done");
+	logBeacon("SOCKET", "aioEnable done");
 }
 
 EXPORT(void) aioHandle(int fd, aioHandler handlerFn, int mask){
 	AioFileDescriptor * aioFileDescriptor;
 	char buf[100];
 
-	logTrace("aioHandle start");
+	logBeacon("SOCKET", "aioHandle start");
 	aioFileDescriptor = aioFileDescriptor_find(fd);
 
 	if(!aioFileDescriptor){
-		logTrace("aioHandle no aioFileDescriptor");
+		logBeacon("SOCKET", "aioHandle no aioFileDescriptor");
 		return;
 	}
 
@@ -276,17 +276,17 @@ EXPORT(void) aioHandle(int fd, aioHandler handlerFn, int mask){
 		WSAEventSelect(aioFileDescriptor->fd, aioFileDescriptor->readEvent, FD_READ | FD_ACCEPT | FD_OOB | FD_CLOSE);
 		//This recv will always generates a WOULDBLOCK, but this is needed to generate the correct event in Windows.
 		recv(aioFileDescriptor->fd, (void*)buf, 100, MSG_PEEK);
-		logTrace("aioHandle AIO_R done");
+		logBeacon("SOCKET", "aioHandle AIO_R done");
 		return;
 	}
 
 	if(mask & AIO_W){
 		WSAEventSelect(aioFileDescriptor->fd, aioFileDescriptor->writeEvent, FD_WRITE);
-		logTrace("aioHandle AIO_W done");
+		logBeacon("SOCKET", "aioHandle AIO_W done");
 		return;
 	}
 
-	logTrace("aioHandle done");
+	logBeacon("SOCKET", "aioHandle done");
 }
 
 EXPORT(void) aioSuspend(int fd, int mask){
@@ -297,16 +297,16 @@ EXPORT(void) aioSuspend(int fd, int mask){
 }
 
 EXPORT(void) aioDisable(int fd){
-	logTrace("aioDisable start");
+	logBeacon("SOCKET", "aioDisable start");
 	aioFileDescriptor_remove(fd);
-	logTrace("aioDisable done");
+	logBeacon("SOCKET", "aioDisable done");
 }
 
 EXPORT(void) aioEnableExternalHandler(int fd, HANDLE handle, void *clientData, aioHandler handlerFn, int mask){
 
 	AioFileDescriptor * aioFileDescriptor;
 
-	logTrace("aioEnableExternalHandler start");
+	logBeacon("SOCKET", "aioEnableExternalHandler start");
 	aioFileDescriptor = aioFileDescriptor_find(fd);
 	if(!aioFileDescriptor){
 		aioFileDescriptor = aioFileDescriptor_new();
@@ -327,7 +327,7 @@ EXPORT(void) aioEnableExternalHandler(int fd, HANDLE handle, void *clientData, a
 
 	aioFileDescriptor->handlerFn = handlerFn;
 	aioFileDescriptor->mask = mask;
-	logTrace("aioEnableExternalHandler done");
+	logBeacon("SOCKET", "aioEnableExternalHandler done");
 }
 
 /*
@@ -362,10 +362,10 @@ static int checkHandlesForPipes(HANDLE* handlesToQuery, long size){
 static int checkEventsInHandles(HANDLE* handlesToQuery, int size){
 	int hasEvent = 0;
 
-	logTrace("checkEventsInHandles start");
+	logBeacon("SOCKET", "checkEventsInHandles start");
 	for(int i=0; i < size; i++){
 		if(WaitForSingleObject(handlesToQuery[i], 0) == WAIT_OBJECT_0) {
-			logTrace("checkEventsInHandles signal handle %p", handlesToQuery[i]);
+			logBeacon("SOCKET", "checkEventsInHandles signal handle %p", handlesToQuery[i]);
 			aioFileDescriptor_signal_withHandle(handlesToQuery[i]);
 			hasEvent = 1;
 		}
@@ -373,7 +373,7 @@ static int checkEventsInHandles(HANDLE* handlesToQuery, int size){
 
 	hasEvent |= checkHandlesForPipes(handlesToQuery, size);
 
-	logTrace("checkEventsInHandles done: %d", hasEvent);
+	logBeacon("SOCKET", "checkEventsInHandles done: %d", hasEvent);
 	return hasEvent;
 }
 
@@ -417,10 +417,10 @@ static HANDLE sliceWaitForMultipleObjects(HANDLE* allHandles, int initialIndex, 
 	sliceData->size = sizeToProcess;
 	sliceData->microSeconds = microSeconds;
 	for (int i=0; i<sizeToProcess; i++) {
-		logTrace("sliceData->handles[%d]=%p", i, allHandles[initialIndex+i]);
+		logBeacon("SOCKET", "sliceData->handles[%d]=%p", i, allHandles[initialIndex+i]);
 	}
 
-//	logTrace("Launching slice from %d size %d", initialIndex, sizeToProcess);
+//	logBeacon("SOCKET", "Launching slice from %d size %d", initialIndex, sizeToProcess);
 
 	r = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) waitHandlesThreadFunction, sliceData, 0, NULL);
 
@@ -452,7 +452,7 @@ EXPORT(long) aioPoll(long microSeconds){
 	 * The remaining slot is used by the interruptEvent.
 	 */
 
-	logTrace("aioPoll start");
+	logBeacon("SOCKET", "aioPoll start");
 	//We need an array with all the handles to process
 	long size = aioFileDescriptor_numberOfHandles();
 	allHandles = malloc(sizeof(HANDLE) *size);
@@ -463,7 +463,7 @@ EXPORT(long) aioPoll(long microSeconds){
 	if(size % MAXIMUM_WAIT_OBJECTS){
 		numberOfThreads++;
 	}
-	logTrace("aioPoll: %d handles, %d threads, max %d", size, numberOfThreads, MAXIMUM_WAIT_OBJECTS);
+	logBeacon("SOCKET", "aioPoll: %d handles, %d threads, max %d", size, numberOfThreads, MAXIMUM_WAIT_OBJECTS);
 
 	/*
 	* If the number of threads is bigger than the ones I can manage I will handle as the timeout has arrive.
@@ -472,11 +472,11 @@ EXPORT(long) aioPoll(long microSeconds){
 
 	if((numberOfThreads + 1) > MAXIMUM_WAIT_OBJECTS){
 
-		logTrace("More threads than MAXIMUM_WAIT_OBJECTS, just checking one by one");
+		logBeacon("SOCKET", "More threads than MAXIMUM_WAIT_OBJECTS, just checking one by one");
 
 		checkEventsInHandles(allHandles, size);
 		free(allHandles);
-		logTrace("aioPoll MAXIMUM_WAIT_OBJECTS");
+		logBeacon("SOCKET", "aioPoll MAXIMUM_WAIT_OBJECTS");
 		return 1;
 	}
 
@@ -489,7 +489,7 @@ EXPORT(long) aioPoll(long microSeconds){
 	 * We pass the interrupt event as the first handler
 	 */
 	waitingHandles[0] = interruptEvent;
-	logTrace("interruptEvent: %p", interruptEvent);
+	logBeacon("SOCKET", "interruptEvent: %p", interruptEvent);
 
 	int remainingSize = size;
 	int initialIndex = 0;
@@ -510,7 +510,7 @@ EXPORT(long) aioPoll(long microSeconds){
 			free(waitingHandles);
 			free(allHandles);
 
-			logTrace("aioPoll waitingHandles[i] == NULL");
+			logBeacon("SOCKET", "aioPoll waitingHandles[i] == NULL");
 			return 0;
 		}
 
@@ -543,7 +543,7 @@ EXPORT(long) aioPoll(long microSeconds){
 		free(waitingHandles);
 		free(allHandles);
 
-		logTrace("aioPoll WAIT_TIMEOUT");
+		logBeacon("SOCKET", "aioPoll WAIT_TIMEOUT");
 		return hasEvents;
 	}
 
@@ -560,7 +560,7 @@ EXPORT(long) aioPoll(long microSeconds){
 		free(waitingHandles);
 		free(allHandles);
 
-		logTrace("aioPoll WAIT_FAILED");
+		logBeacon("SOCKET", "aioPoll WAIT_FAILED");
 		return 0;
 	}
 
@@ -579,7 +579,7 @@ EXPORT(long) aioPoll(long microSeconds){
 
 	free(waitingHandles);
 	free(allHandles);
-	logTrace("aioPoll done");
+	logBeacon("SOCKET", "aioPoll done");
 	return hasEvents;
 }
 
