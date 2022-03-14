@@ -251,7 +251,7 @@ doSignalExternalSemaphores(sqInt externalSemaphoreTableSize)
 			if (doSignalSemaphoreWithIndex(i+1))
 				switched = 1;
 			++signalRequests[i].responses;
-			logBeacon("SEMAPHORE", "doSignalSemaphoreWithIndex(%d): %d, %d", i, signalRequests[i].requests, signalRequests[i].responses)
+			logBeacon("SEMAPHORE", "doSignalSemaphoreWithIndex(%d): %d, %d", i, signalRequests[i].requests, signalRequests[i].responses);
 			signalled = 1;
 		}
 
