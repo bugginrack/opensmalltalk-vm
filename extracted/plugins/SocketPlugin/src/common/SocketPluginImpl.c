@@ -600,15 +600,17 @@ static void dataHandler(int fd, void *data, int flags)
     {
       int n= socketReadable(fd, pss->socketType);
       if (n == 0)
-	{
-	  logTrace("dataHandler: selected socket fd=%d flags=0x%x would block (why?)\n", fd, flags);
-	}
-      if (n != 1)
-	{
-	  pss->sockError= socketError(fd);
-	  pss->sockState= OtherEndClosed;
-	}
+	      {
+	      logTrace("dataHandler: selected socket fd=%d flags=0x%x would block (why?)\n", fd, flags);
+	      }
+      if (n < 0)
+	      {
+	      pss->sockError= socketError(fd);
+	      pss->sockState= OtherEndClosed;
+	      }
+      notify(pss, READ_NOTIFY);
     }
+  if (flags & AIO_W) notify(pss, WRITE_NOTIFY);
   if (flags & AIO_X)
     {
       /* assume out-of-band data has arrived */
@@ -618,8 +620,6 @@ static void dataHandler(int fd, void *data, int flags)
       int n= recv(fd, (void *)buf, 1, MSG_OOB);
       if (n == 1) logTrace("socket: received OOB data: %02x\n", buf[0]);
     }
-  if (flags & AIO_R) notify(pss, READ_NOTIFY);
-  if (flags & AIO_W) notify(pss, WRITE_NOTIFY);
 }
 
 
