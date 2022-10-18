@@ -372,36 +372,29 @@ struct sliceData {
 DWORD WINAPI waitHandlesThreadFunction(struct sliceData* sliceData ){
 
 	DWORD returnValue;
-	HANDLE* handles;
-	int size;
-	long microSeconds;
 
-	// I copy the data just in case.
+	returnValue = WaitForMultipleObjectsEx(sliceData->size, sliceData->handles, FALSE, sliceData->microSeconds / 1000, FALSE);
 
-	size = sliceData->size;
-	microSeconds = sliceData->microSeconds;
-
-	handles = malloc(sizeof(HANDLE) * size);
-	for(int i = 0; i < size; i++){
-		handles[i] = sliceData->handles[i];
-	}
-
+	free(sliceData->handles);
 	free(sliceData);
-
-	returnValue = WaitForMultipleObjectsEx(size, handles, FALSE, microSeconds / 1000, FALSE);
-
-	free(handles);
 	return 0;
 }
 
 static HANDLE sliceWaitForMultipleObjects(HANDLE* allHandles, int initialIndex, int sizeToProcess, long microSeconds){
 
 	HANDLE r;
+	HANDLE* handles;
 	struct sliceData* sliceData = malloc(sizeof(struct sliceData));
 
 	sliceData->handles = &(allHandles[initialIndex]);
 	sliceData->size = sizeToProcess;
 	sliceData->microSeconds = microSeconds;
+	
+	handles = malloc(sizeof(HANDLE) * sizeToProcess);
+	for(int i = 0; i < sizeToProcess; i++){
+		handles[i] = sliceData->handles[i];
+	}
+	sliceData->handles = handles;
 
 //	logTrace("Launching slice from %d size %d", initialIndex, sizeToProcess);
 
@@ -550,9 +543,9 @@ EXPORT(long) aioPoll(long microSeconds){
 	if(returnValue == WAIT_OBJECT_0){
 		ResetEvent(interruptEvent);
 	}
-/*	}else{ */
+	else{
 		hasEvents = checkEventsInHandles(allHandles, size);
-/*	} */
+	}
 
 	free(waitingHandles);
 	free(allHandles);
